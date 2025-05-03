@@ -8,7 +8,7 @@ cloudinary.config({
 });
 
 
-const uploadCloudinary = async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath) => {
     try {
         if(!localFilePath) {
             throw new Error("there is no file to upload");
@@ -25,4 +25,4 @@ const uploadCloudinary = async (localFilePath) => {
     }
 }
 
-export { uploadCloudinary };
+export { uploadOnCloudinary };
