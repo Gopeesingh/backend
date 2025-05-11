@@ -3,6 +3,8 @@ import { ApiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { error } from "console";
+import { access } from "fs";
 
 const registerUser  = asyncHandler(async (req, res) => {
     //1:- get user detail from frontend
@@ -74,4 +76,74 @@ const registerUser  = asyncHandler(async (req, res) => {
     )
 })
 
-export {registerUser}
+// generate access token and refresh token
+const generateAccessAndRefreshToken = async(user) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.genarateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+
+        return { accessToken, refreshToken };
+
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating tokens")
+    }
+}
+
+const loginUser = asyncHandler(async (req, res) => {
+// req body -> data
+// username or email
+// find the User
+// check for password
+// generate access token and refresh token
+// send cookies
+
+// req body -> data
+const {email, username, password} = req.body
+
+// username or email
+if(!email || !username){
+    throw new ApiError(400, "Email or username is required")
+}
+
+// find the User
+const user = await User.findOne({
+    $or: [{username}, {email}]
+})
+
+if(!user){
+    throw new ApiError(404, "User not found")
+}
+
+// check for password
+const isPasswordCorrect = await user.isPasswordCorrect(password);
+
+if(!isPasswordCorrect){
+    throw new ApiError(401, "Invalid password")
+}
+
+// generate access token and refresh token
+const{ accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+
+// send cookies
+const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"  // remove password and refresh token by select from user
+)
+
+const options = {httpOnly: true, secure: true} // not visible in frontend
+
+return res
+.status(200)
+.cookie("accessToken", accessToken, options)
+.cookie("refreshToken", refreshToken, options)
+.json(
+    new ApiResponse(200,
+        {user: loggedInUser, refreshToken, accessToken},
+        "User logged in successfully")
+)
+})
+
+export {registerUser, loginUser}
