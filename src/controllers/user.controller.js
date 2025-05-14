@@ -259,11 +259,19 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Avatar file is missing")
     }
 
+    // TODO: delete previous avatar from cloudinary
+    const DeleteAvatar = await User.findById(req.user?._id);
+    if(DeleteAvatar?.avatar){
+        await deleteFromCloudinary(DeleteAvatar.avatar);
+    }
+    // upload new avatar
+
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     if(!avatar.url){
         throw new ApiError(400, "Error while uploading on avatar")
     }
-
+    // update user avatar
+    
     const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
@@ -302,7 +310,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         },
         {new: true}
     ).select("-password")
-    
+
     return res
     .status(200)
     .json(
